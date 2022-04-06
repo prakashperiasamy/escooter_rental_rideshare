@@ -6,10 +6,10 @@ Analysis Description: Performed data cleaning via univariate analysis, metric an
 2) spatial analysis (using origin-destination latitude and longitude positions).
 
 ● Key Summary:
-○ 1.5x to 2x difference in operations between 2 companies
-○ 12-6 PM on Weekends is when the rental demand peaks for both companies
-○ Casual/recreational is the rider persona
-○ 30 to 120 is the estimated scooter count based on overlapping trip logic
+1) 1.5x to 2x difference in operations between 2 companies
+2) 12-6 PM on Weekends is when the rental demand peaks for both companies
+3) Casual/recreational is the rider persona
+4) 30 to 120 is the estimated scooter count based on overlapping trip logic
 
 Programming Language: R (tidyverse package ecosystem)
 Report: R markdown (hyperlinked with table of contents)
