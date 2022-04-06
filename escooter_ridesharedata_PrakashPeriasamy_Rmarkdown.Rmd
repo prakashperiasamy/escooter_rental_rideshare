@@ -1,0 +1,2012 @@
+---
+title: "e-scooter ride share data analysis"
+author: "Prakash Periasamy"
+date: "2022"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+urlcolor: blue
+version: '1'
+---
+
+Setup Global Options
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	tidy = TRUE,
+	error = FALSE,
+	out.height = "90%",
+	out.width = "90%",
+	fig.align = "center",
+	comment = ""
+)
+options(tibble.print_min = 5)
+```
+
+Set Viewgraphs Theme
+
+```{r Themes, echo=FALSE}
+theme_custom <- function (base_size = 12, base_family = "") {
+  half_line <- base_size/2
+  theme(
+    line = element_line(color = "black", size = .5,
+                        linetype = 1, lineend = "butt"),
+    rect = element_rect(fill = "white", color = "black",
+                        size = .5, linetype = 1),
+    text = element_text(family = base_family, face = "plain",
+                        color = "black", size = base_size,
+                        lineheight = .9, hjust = .5, vjust = .5,
+                        angle = 0, margin = margin(), debug = FALSE),
+    axis.line = element_blank(),
+    axis.line.x = NULL,
+    axis.line.y = NULL,
+    axis.text = element_text(size = base_size * 0.9, color = "black"),
+    axis.text.x = element_text(margin = margin(t = .8 * half_line/2),
+                               vjust = 1),
+    axis.text.x.top = element_text(margin = margin(b = .8 * half_line/2),
+                                   vjust = 0),
+    axis.text.y = element_text(margin = margin(r = .8 * half_line/2),
+                               hjust = 1),
+    axis.text.y.right = element_text(margin = margin(l = .8 * half_line/2),
+                                     hjust = 0),
+    axis.ticks = element_line(color = "gray30", size = .7),
+    axis.ticks.length = unit(half_line / 1.5, "pt"),
+    axis.ticks.length.x = NULL,
+    axis.ticks.length.x.top = NULL,
+    axis.ticks.length.x.bottom = NULL,
+    axis.ticks.length.y = NULL,
+    axis.ticks.length.y.left = NULL,
+    axis.ticks.length.y.right = NULL,
+    axis.title.x = element_text(margin = margin(t = half_line),
+                                vjust = 1, size = base_size * 0.9,
+                                face = "bold"),
+    axis.title.x.top = element_text(margin = margin(b = half_line),
+                                    vjust = 0),
+    axis.title.y = element_text(angle = 90, vjust = 1,
+                                margin = margin(r = half_line),
+                                size = base_size * 0.9, face = "bold"),
+    axis.title.y.right = element_text(angle = -90, vjust = 0,
+                                      margin = margin(l = half_line)),
+    legend.background = element_rect(color = NA),
+    legend.spacing = unit(.4, "cm"),
+    legend.spacing.x = NULL,
+    legend.spacing.y = NULL,
+    legend.margin = margin(.2, .2, .2, .2, "cm"),
+    legend.key = element_rect(fill = "gray95", color = "white"),
+    legend.key.size = unit(1.2, "lines"),
+    legend.key.height = NULL,
+    legend.key.width = NULL,
+    legend.text = element_text(size = rel(.8)),
+    legend.text.align = NULL,
+    legend.title = element_text(hjust = 0),
+    legend.title.align = NULL,
+    legend.position = "right",
+    legend.direction = NULL,
+    legend.justification = "center",
+    legend.box = NULL,
+    legend.box.margin = margin(0, 0, 0, 0, "cm"),
+    legend.box.background = element_blank(),
+    legend.box.spacing = unit(.4, "cm"),
+    panel.background = element_rect(fill = "white", color = NA),
+    panel.border = element_rect(color = "gray30",
+                                fill = NA, size = .7),
+    panel.grid.major = element_line(color = "gray90", size = 1),
+    panel.grid.minor = element_line(color = "gray90", size = .5,
+                                    linetype = "dashed"),
+    panel.spacing = unit(base_size, "pt"),
+    panel.spacing.x = NULL,
+    panel.spacing.y = NULL,
+    panel.ontop = FALSE,
+    strip.background = element_rect(fill = "white", color = "gray30"),
+    strip.text = element_text(color = "black", size = base_size),
+    strip.text.x = element_text(margin = margin(t = half_line,
+                                                b = half_line)),
+    strip.text.y = element_text(angle = -90,
+                                margin = margin(l = half_line,
+                                                r = half_line)),
+    strip.text.y.left = element_text(angle = 90),
+    strip.placement = "inside",
+    strip.placement.x = NULL,
+    strip.placement.y = NULL,
+    strip.switch.pad.grid = unit(0.1, "cm"),
+    strip.switch.pad.wrap = unit(0.1, "cm"),
+    plot.background = element_rect(color = NA),
+    plot.title = element_text(size = base_size * 1.1, hjust = .5,
+                              vjust = 1, face = "bold",
+                              margin = margin(b = half_line * 1.2)),
+    plot.title.position = "panel",
+    plot.subtitle = element_text(size = base_size * 1,
+                                 hjust = .5, vjust = 1,
+                                 margin = margin(b = half_line * .9)),
+    plot.caption = element_text(size = rel(0.8), hjust = 1, vjust = 1,
+                                margin = margin(t = half_line * .9)),
+    plot.caption.position = "panel",
+    plot.tag = element_text(size = rel(1.2), hjust = .5, vjust = .5),
+    plot.tag.position = "topleft",
+    plot.margin = margin(base_size, base_size, base_size, base_size),
+    complete = TRUE
+  )
+}
+```
+
+## 1. Executive Technical Summary
+
+### **1.1 Describe the operations of these two mobility companies.**
+
+-   **Location:** Both the mobility companies operate out of [Louisville, KY]{.ul}
+
+-   **Data Info:**
+
+    -   Company A & B has 5 & 2 months of rental data, respectively
+
+    -   Date Range: Company A (Aug'18 to Dec'18); Company B(Dec'18 to Jan'19)
+
+    -   TripDistance is converted to miles (Company B) to match Company A
+
+    -   Data cleaning procedure is documented below in the codes
+
+-   **Operation Metrics**
+
+    +--------------------------------------+-------------------+-------------------+
+    | Operation Metrics                    | Company A         | Company B         |
+    |                                      |                   |                   |
+    |                                      | Average *(SD)*    | Average *(SD)*    |
+    +:=====================================+:=================:+:=================:+
+    | Trips Per Day (counts/day)           | **353** *(140)*   | **165** *(103)*   |
+    +--------------------------------------+-------------------+-------------------+
+    | Distance Per Trip (miles/trip)       | **1.5** *(1.8)*   | **1** *(1)*       |
+    +--------------------------------------+-------------------+-------------------+
+    | Duration Per Trip (mins/trip)        | **17** *(21)*     | **14** *(19)*     |
+    +--------------------------------------+-------------------+-------------------+
+    | Trip Speed (mph)\*                   | **\~5.7** *(2.7)* | **\~5.6** *(3.1)* |
+    |                                      |                   |                   |
+    | [\*Rough estimate. no pause info]    |                   |                   |
+    +--------------------------------------+-------------------+-------------------+
+    | Average Revenue\*\* Per Day (\$/day) | **1261** *(625)*  | **500** *(305)*   |
+    |                                      |                   |                   |
+    | [\*\*Assumptions: \$1 unlockfee +]   |                   |                   |
+    +--------------------------------------+-------------------+-------------------+
+
+    : Select Operational Metrics (rounded values) for Company A & B
+
+-   **Key Viewgraph: (Please see details in the code below)**
+
+![](images/paste-A24EC93B.png){width="446"}
+
+![](images/paste-BAADD0C6.png){width="426"}
+
+![](images/paste-F4EB5BAE.png){width="417"}
+
+![](images/paste-3D2C7173.png){width="395"}
+
+![](images/paste-601AB297.png){width="407"}
+
+### **1.1.1 (Q1) Key Summary**
+
+-   **Trips/Day:** Company A averages about 2X times trips/day than Company B
+
+-   Riders of Company A spends on an average about 1.2X times more time per trip and travels about 1.5X times more distance per trip than Company B
+
+-   **Revenue:** Company A generates about \$1260/day in revenue (2.5X more) compared to about \$500/day in Company B.
+
+-   **Riders Persona:** Riders of both companies are recreational/causal riders, since the busy periods occurs on the weekends and in midday. Temporal analysis indicate no bimodal trend that is typical of commuter riders
+
+-   **Spatial Distribution**:
+
+    -   Company A has slightly broader coverage area than Company B.
+
+    -   Station location of both companies might be sligthly different. Possibly in different neighbourhoods/centers of attraction
+
+-   Company A operated about 200 to 225 scooters per day, which stayed almost constant through the week and increased on Saturday and Sunday. So there is dynamics in scooter inventory in Company A.
+
+-   **Overall, data indicates Company A's operation > Company B.**
+
+### 1.2 (Q2) Please estimate the number of scooters company b operates in this geography? Simpler mechanisms of estimation are preferred.
+
+#### **1.2.1 [Logic]{.ul}**
+
+**At a minimum, there should be as many number of scooters as there are overlapping trip.**
+
+-   Because a scooter during a trip, can not be rented for another trip. Hence overlapping trips is a proxy for estimating the minimum number of scooters
+
+#### **1.2.1 [Overlap Criteria]{.ul}**
+
+**For two trips, trip1 and trip2, to overlap, the following condition should satisfy:**
+
+-   **StartTime (of Trip1) \< EndTime (Trip2) & EndTime(Trip1) > StartTime(Trip2)**
+
+#### 1.2.2 [Execution Steps]{.ul}
+
+**Step 1:** Calculate the maximum number of overlapping trips (using the above criteria) within a day. Repeat it for all days and look for the maximum in each case.
+
+-   Let's call it "max_overlaptrips_for_each_day"
+
+**Step 2:** Get the overall maximum value from all of the calculated "max_overlaptrips_for_each_day".
+
+Result from Step 2, gives the estimated minimum of scooters.
+
+**Limitations/Assumptions in this Strategy:**
+
+-   **Assumption:** Scooter inventory is assumed to be constant for the entire time period.
+
+    -   Company A files indicates a dynamic inventory. We won't be able to capture that for Company B without the ScooterId
+
+-   **Limitation:** This strategy would underestimate the true maximum of scooters because:
+
+    -   it doesn't take into account start and end locations
+
+    -   if they never actually rented out the full capacity (outside the scope of the data)
+
+    **Strategies to Improve Estimation Accuracy:**
+
+    -   Including location data (origin & destination) might improve the accuracy
+
+-   **Key Viewgraphs (See detailed summary in the code below)**
+
+![](images/paste-DAD2D257.png){width="332"}
+
+![](images/paste-2587A652.png){width="336"}
+
+![](images/paste-48C0682F.png){width="333"}
+
+#### **1.2.2 (Q2) Summary**
+
+-   **The number of scooters that Company B operates is estimated to be about [30 scooters]{.ul}**
+
+    -   Note using the overlapping trip methodology followed, it will be an underestimate and going by the testing done in Company A data, the estimate can vary by more than 2X
+
+    -   In Company A, the estimated and actual number of scooters varied by 4X. But Company B scale of operation is less than Company B
+
+Load Package
+
+```{r Packages, echo=FALSE}
+library(lubridate)
+library(plotly)
+library(reshape2)
+library(scales)
+library(ggridges)
+library(ggmap)
+library(hrbrthemes)
+library(tidyverse)
+theme_set(theme_custom())
+```
+
+## 2. Load Data
+
+7 datasets: Company A (5 files); Company B (2 files)
+
+```{r ReadData }
+a_1 <- read_csv("company_a_1.csv")
+a_2 <- read_csv("company_a_2.csv")
+a_3 <- read_csv("company_a_3.csv")
+a_4 <- read_csv("company_a_4.csv")
+a_5 <- read_csv("company_a_5.csv")
+
+b_1 <- read_csv("company_b_1.csv")
+b_2 <- read_csv("company_b_2.csv")
+```
+
+## 3. EDA
+
+### 3.1 Raw Data: Quick Study
+
+```{r}
+a_1 %>% head()
+```
+
+```{r}
+str(a_1)
+```
+
+```{r QuickStudyRawData}
+summary(a_1)
+```
+
+```{r}
+#str(a_3)
+#summary(a_3)
+#str(a_5)
+#summary(a_5)
+```
+
+```{r}
+str(b_1)
+```
+
+```{r}
+summary(b_1)
+#summary(b_2)
+```
+
+#### 3.1.1 Summary: Quick Study
+
+-   Company A files has same 9 variables (scooter rental trip data)
+
+    -   Each of those files represent different months
+    -   Start and end time variables need data type convert to dates
+
+-   Company B files has 8 variables that are common with A files, **but missing scooterId**
+
+-   **Operating area for both A& B is Louisville, KY** area based on median Latitude and Longitude values in the data
+
+    -   Median Start/End latitude is 38.25
+
+    -   Median Start/Endlongitude is -85.75
+
+-   For comprehensive analysis, merge all five A files together; Same for B files.
+
+-   For ease of analysis, make the variable names uniform across both the datasets, since both contain exactly same information expect for the missing scooterid in B.
+
+-   Calculate & add TripDuration = EndTime - StartTime
+
+### 3.2 Merge Data
+
+```{r}
+# Add a new variable fileID to each files
+# In the merged dataset, fileId will acts as the identifier
+
+#Function to add fileId
+
+add_fileid <- function(df, dfname){
+  df <- df %>% mutate(FileId = dfname )
+}
+
+#Add fileId as a column
+a_1 <- add_fileid(a_1, "a_1")
+a_2 <- add_fileid(a_2, "a_2")
+a_3 <- add_fileid(a_3, "a_3")
+a_4 <- add_fileid(a_4, "a_4")
+a_5 <- add_fileid(a_5, "a_5")
+
+b_1 <- add_fileid(b_1, "b_1")
+b_2 <- add_fileid(b_2, "b_2")
+
+
+#Merge all company "a" files
+a_all <- bind_rows(a_1, a_2, a_3, a_4, a_5)
+b_all <- bind_rows(b_1, b_2)
+```
+
+### 3.3 Modify Data Types & Calculate Trip Duration, Trip Speed
+
+Rename Columns, Convert TripDistance in B files to Miles, Fix Date, Add Trip Duration, Trip Speed
+
+```{r}
+#colnames(a_all)
+#colnames(b_all)
+
+# Rename column names for company b to match company a
+b_all <- rename(b_all, 
+       TripID = trip_id, 
+       StartTime = start_time, 
+       EndTime = completed_time, 
+       StartLatitude = start_latitude,
+       StartLongitude = start_longitude,
+       EndLatitude = end_latitude,
+       EndLongitude = end_longitude,
+       TripDistance = distance_meters
+       )
+
+# Convert company b TripDistance to miles to match company a
+b_all <- b_all %>% mutate(TripDistance = TripDistance/1609.344)
+
+# Fix StartTime and EndTime data type and add trip duration (mins)
+
+a_all <- a_all %>% mutate(StartTime = mdy_hm(StartTime), 
+         EndTime = mdy_hm(EndTime), 
+         #duration in mins
+         TripDuration = as.numeric((EndTime - StartTime)/60), 
+         #Speed in miles per hour
+         TripSpeed = round((TripDistance*60/TripDuration),1)) 
+
+b_all <- b_all %>% mutate(StartTime = ymd_hms(StartTime), 
+         EndTime = ymd_hms(EndTime), 
+         #duration in mins
+         TripDuration = as.numeric((EndTime - StartTime)/60), 
+         #Speed in miles per hour
+         TripSpeed = round((TripDistance*60/TripDuration),1)) 
+
+```
+
+### 3.4 Merged Data: Quick Study
+
+Company A
+
+```{r QuickStudyMergeData}
+nrow(a_all)
+summary(a_all)
+```
+
+Company B
+
+```{r}
+nrow(b_all)
+summary(b_all)
+```
+
+#### Summary: Quick Study
+
+-   Company A files: \~57K records, 9 variables
+
+-   Company B files: \~10K records, 8 variables (scooterid missing in B)
+
+## 3.5 Check for Missing Values
+
+```{r}
+#function to visualize missing cases across variables in the dataset
+find_missing_cases <- function(df){
+  #Plots the number of missing values in all variables in the given dataframe, df
+  df %>% 
+    summarise_all(list(~sum(is.na(.)))) %>% 
+    t() %>% 
+    as_tibble() %>% 
+    mutate(variable = colnames(df)) %>% 
+    rename(counts_missing=V1) %>% 
+    mutate(variable = reorder(variable, counts_missing)) %>% 
+    ggplot(data=., aes(y=variable, x= counts_missing)) + 
+    geom_col(fill = muted("red"), alpha=0.5) + 
+    geom_text(aes(label = counts_missing), hjust = 2)+
+    labs(x="Number of Missing Values", 
+         y="", 
+       title = "Number of Missing Values Vs Variables",
+       subtitle = glue::glue("Total Number of Records: ", nrow(df)))
+}
+```
+
+Find missing cases in company A & B files using the fun: find_missing_cases
+
+```{r}
+a_all %>% find_missing_cases()
+```
+
+#### 3.5.1 Missing value investigation: Company A
+
+```{r}
+#filtering records with missing values in EndLatitude and EndLongitude
+a_all %>% 
+  #filter the missing value record
+  filter(is.na(EndLatitude) | is.na(EndLongitude)) %>% 
+  t() #transpose
+```
+
+```{r}
+#filtering records with missing values in calculated Tripspeed
+
+a_all %>% 
+  filter(is.na(TripSpeed)) %>% head()#filter the missing value record
+
+```
+
+#### 3.5.2 Drop missing record: Company A
+
+```{r}
+#Make new dataframe a_all_clean
+a_all_clean <- a_all %>% 
+  filter(!TripID == "c607c2b1-38be-4746-90b1-73fe4af50667")
+#exclude record with missing value in EndLatitude and Endlongitude
+
+#exclude record with NA trip speed (because tripduration = 0)
+a_all_clean <- a_all_clean %>% 
+  filter(!is.na(TripSpeed)) 
+
+print(glue::glue("No. of records after removing missing values: ",
+                 nrow(a_all_clean)))
+```
+
+#### 3.5.3 No missing values in Company B
+
+```{r}
+b_all %>% find_missing_cases()
+b_all_clean = b_all #Make new dataframe for company B clean data
+```
+
+#### 3.5.4 Summary: Missing value investigations
+
+-   A files: One missing value in end latitude and longitude. Nothing stands out, hence dropping this record. No missing values in all other 7 variables
+
+-   B files: No missing values in all variables
+
+-   TripID is unique in both the datasets
+
+-   Dataframe name for all future analysis:
+
+    -   Company A: a_all_clean
+
+    -   Company B: b_all_clean
+
+## 3.6 Check for Duplicate Records
+
+```{r}
+#Function to check duplicate records
+check_duplicate <- function(df, dfname) {
+  if (nrow(df) == nrow(distinct(df))) {
+    print(str_glue("No duplicates records in {dfname}"))
+  } else {
+    print("Duplicate records found")
+  }
+}
+```
+
+```{r}
+check_duplicate(a_all, "a_all")
+```
+
+```{r}
+check_duplicate(b_all, "b_all")
+```
+
+#### 3.6.1 Summary
+
+-   No duplicate records in both A & B files
+
+## 3.7 Data Cleaning: Company A
+
+#### 3.7.1 Pre-Clean: Boxplot distribution of numerical variables
+
+```{r}
+a_all_clean %>%
+  select(where(is.numeric)) %>%
+  pivot_longer(colnames(.)) %>% 
+  ggplot(., aes(y = value)) +
+  geom_boxplot() + 
+  labs(y= "Value", title = 
+         "Boxplot Distribution of Select Variables"
+       ) +
+  facet_wrap(~ name, scales = "free")+
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+**Summary**
+
+-   EndLatitude, EndLongitude, TripDistance, TripDuration (and hence TripSpeed) has outliers and needs data cleaning after investigation.
+-   Investigate sequentially and drop records for each variable
+
+#### 3.7.2 End Latitude
+
+-   Latitude and longitude range to divide the entire planet is +/- 90 and +/-180 degrees, respectively. In our data, latitude and longitude are in 2 decimals. Hence it's a coarse precision considering the operation of e-scooters which typically have a range of only about \~25 miles.
+
+-   **0.01 in latitude or longitude represents approximately 0.7 miles**. Thus, in our data, location precision is limited to about 0.7 miles
+
+-   Louisville, KY's : latitude position is 38.328732, longitude position is -85.764771
+
+-   In this data, median StartLatitude and Endlatitude is 38.25
+
+-   **So making an approximation to go up to +/-0.4 (+/-28 miles) in latitude with 38.25 as the center, gives the extreme boundaries (37.85 to 38.65) of the latitude position.**
+
+    -   This gives a radial range of 28 miles from the center (median) latitude position of 38.25
+
+    -   After looking carefully at the quantile distribution down to 0.1% of the data, these ranges hold good
+
+    -   It nicely covers the range covered by all data in StartLatitude as well
+
+-   With this assumption, need to drop off 5 records due to outliers in EndLatitude (out of 57K records), which is \<\<0.1% of data
+
+```{r}
+#Distribution
+a_all_clean%>% 
+  filter(between(EndLatitude, 37.85, 38.65)) %>%  
+  ggplot(aes(y=EndLatitude)) + 
+  geom_boxplot()+
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+9 Records that will be dropped off as part of data cleaning due to EndLatitude
+
+```{r}
+a_all_clean%>% 
+  filter(!between(EndLatitude, 37.85, 38.65)) %>% 
+  select(-c(TripID:EndTime))
+
+#Drop 9 records
+a_all_clean <- a_all_clean %>%
+  filter(between(EndLatitude, 37.85, 38.65))
+```
+
+#### 3.7.3 End Longitude
+
+-   Median StartLongitude is -85.75 (as a reference, center)
+
+-   So following the same procedure as in EndLatitude, for EndLongitude as well, let's make gross approximation to go up to +/-0.4 (+/-28 miles) with -85.75 as the center, gives the extreme boundaries of latitude to be between approximately -86.15 and -85.35 in longitude.
+
+    -   It nicely covers the range covered by all data in StartLongitude as well
+
+-   Cleaning up outlier EndLatitude did fix the EndLongitude as well, confirming that those records have both erroneous EndLatitude and EndLongitude
+
+```{r}
+a_all_clean %>% 
+  filter(between(EndLongitude, -86.15, -85.35)) %>%  
+  ggplot(aes(y=EndLongitude)) + 
+  geom_boxplot() +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+#### 3.7.4 TripDistance (miles)
+
+-   Assuming the range of e-scooters is about 25 miles to 30 miles, and cannot be zero, filter out TripDistance values outside the range of 1 to 40 miles
+
+```{r}
+a_all_clean %>% 
+  filter(between(TripDistance, 0.01, 30)) %>%  
+  ggplot(aes(y=TripDistance)) + 
+  geom_boxplot() +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+**6052 records will be dropped off as part of data cleaning due to TripDistance**
+
+```{r}
+a_all_clean %>% 
+  filter(!between(TripDistance, 0.01, 30)) %>% nrow()
+```
+
+```{r}
+#Drop 6052 records due to TripDistance outliers
+a_all_clean <- a_all_clean %>%
+  filter(between(TripDistance, 0.01, 30))
+```
+
+#### 3.7.5 TripDuration (in mins)
+
+```{r}
+a_all_clean %>% ggplot(aes(x=TripDuration)) + geom_boxplot() +
+  theme(axis.text.y=element_blank(),axis.ticks.y=element_blank())
+
+```
+
+Fivenumber summary
+
+```{r}
+a_all_clean$TripDuration %>% fivenum() #Fivenumber summary
+```
+
+Check manually all the quantiles
+
+```{r}
+a_all_clean$TripDuration %>% 
+  quantile(c(0.01,seq(0.05, 0.99, by = 0.1),0.99,0.999,0.9999))
+```
+
+Manually investigate the suspect TripDuration records
+
+-   TripDuration = 0 mins
+
+-   TripDuration > 12 hours (12\*60 = 720 mins)
+
+There are 12 records in this outlier TripDuration
+
+```{r}
+a_all_clean %>% 
+  filter(TripDuration==0.0 | TripDuration > 720)
+```
+
+For these 12 records, the TripDistance and the TripDuration doesn't make sense. So drop these records
+
+```{r}
+#Drop 12 records due to TripDuration (calculated) outliers
+a_all_clean <- a_all_clean %>% setdiff(a_all_clean %>% 
+  filter(TripDuration==0.0 | TripDuration > 720))
+```
+
+#### 3.7.6 TripSpeed (in miles per hour)
+
+Assumption: e-scooters can travel a max speed of 25-50 mph. Hence dropping records with TripSpeed \>50 mph
+
+```{r}
+a_all_clean %>% ggplot(aes(x=TripSpeed)) + geom_boxplot() + 
+  theme(axis.text.y=element_blank(),axis.ticks.y=element_blank())
+
+```
+
+**35 records will be dropped off as part of data cleaning due to TripSpeed**
+
+```{r}
+a_all_clean %>% 
+  filter(!between(TripSpeed, 0.001, 50)) %>% nrow()
+```
+
+```{r}
+#Drop 35 records due to TripSpeed outliers
+a_all_clean <- a_all_clean %>%
+  filter(between(TripSpeed, 0.001, 50))
+```
+
+#### 3.7.7 Summary: Data Cleaning
+
+```{r}
+a_all_outliers <- setdiff(a_all,a_all_clean)
+
+print(glue::glue("\nNo. of records pre data cleaning (Company A): ",
+                 nrow(a_all)))
+print(glue::glue("\nNo. of records post data cleaning:            ",
+                 nrow(a_all_clean)))
+print(glue::glue("No. of records removed due to data cleaning:  ",
+                 nrow(a_all_outliers)))
+percentage_recordremoved = (nrow(a_all_outliers)/nrow(a_all))*100
+print(glue::glue("\n % records removed due to data cleaning:       ",
+                 round(percentage_recordremoved,1)))
+```
+
+Range of days: **2018-08-31 to 2018-12-31 (\~5 months data) in Company A files**.
+
+-   a_1 has august data,...,a_5 has december data
+
+```{r}
+a_all_clean %>% 
+  group_by(FileId) %>% 
+  summarize(daterange= range(StartTime)) %>% 
+  mutate(type = c("Min_StartTime", "Max_StartTime")) %>% 
+  spread(type, daterange) %>% 
+  select(FileId, Min_StartTime, Max_StartTime)
+```
+
+#### 3.7.8 Post-Clean: Histogram distribution
+
+```{r}
+a_all_clean %>%
+  select(where(is.numeric)) %>%
+  select(-TripDuration) %>%
+  pivot_longer(colnames(.)) %>% 
+  ggplot(., aes(y = value)) +
+  geom_boxplot() + 
+  labs(y= "Value", title = 
+         "Distribution of Select Variables",
+       subtitle = "Post-Clean Data; Company A"
+       ) +
+  facet_wrap(~ name, scales = "free")+
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+## 3.8 Data Cleaning: Company B
+
+#### 3.8.1 Pre-Clean: Boxplot distribution of numerical variables
+
+```{r}
+b_all_clean %>%
+  select(where(is.numeric)) %>%
+  select(-TripDuration) %>% 
+  select(-TripID) %>%
+  pivot_longer(colnames(.)) %>% 
+  ggplot(., aes(y = value)) +
+  geom_boxplot() + 
+  labs(y= "Value", title = 
+         "Boxplot Distribution of Select Variables",
+       subtitle = "Pre-Clean Data; Company B"
+       ) +
+  facet_wrap(~ name, scales = "free") +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+**Summary**
+
+-   Median Start/End latitude & Start/End longitude is 38.23, -85.76, respectively
+
+-   IQR (spread) for both, start latitude and end latitude is 0.03 (\~2.1 miles)
+
+    -   `r #b_all_clean$StartLatitude %>% IQR()`
+
+-   IQR for both, start and end longitude is 0.01 (\~0.7 miles)
+
+-   For data cleaning, follow exactly the same procedure as in Company A files
+
+#### 3.8.2 EndLatitude
+
+```{r}
+b_all_clean%>% 
+  filter(between(EndLatitude, 37.85, 38.65)) %>%  
+  ggplot(aes(y=EndLatitude)) + 
+  geom_boxplot() +
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+```{r}
+b_all_clean%>% 
+  filter(!between(EndLatitude, 37.85, 38.65))
+```
+
+Drop 8 records
+
+```{r}
+b_all_clean <- b_all_clean %>%
+  filter(between(EndLatitude, 37.85, 38.65))
+```
+
+#### 3.8.3 EndLongitude
+
+Cleaning EndLatitude fixed EndLongitude as well. Both the positions were erroneous.
+
+```{r}
+b_all_clean%>% 
+  filter(between(EndLatitude, 37.85, 38.65)) %>%  
+  ggplot(aes(y=EndLatitude)) + 
+  geom_boxplot() + theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+No records in Endlongitude outside of our defined zone
+
+```{r}
+b_all_clean%>% 
+  filter(!between(EndLongitude, -86.15, -85.35))
+```
+
+#### 3.8.4 TripDistance
+
+Fivenumber Summary
+
+```{r}
+b_all_clean$TripDistance %>% fivenum()
+```
+
+479 Outlier records
+
+```{r}
+b_all_clean %>%
+  filter(!between(TripDistance, 0.01, 30))
+```
+
+```{r}
+#Checking the mean for TripDistance values between 0 miles and 0.01 miles
+b_all_clean %>%
+     filter(between(TripDistance, 0.00, 0.01)) %>% .$TripDistance %>% mean()
+```
+
+Drop 479 records
+
+```{r}
+b_all_clean <- b_all_clean %>%
+  filter(between(TripDistance, 0.01, 30))
+```
+
+#### 3.8.5 TripDuration
+
+No records outsitde of the range, defined for TripDuration
+
+```{r}
+b_all_clean %>% 
+  filter(TripDuration==0.0 | TripDuration > 720)
+```
+
+#### 3.8.6 TripSpeed (in miles per hour)
+
+Assumption: e-scooters can travel a max speed of 25-50 mph. Hence dropping records with TripSpeed \>50 mph
+
+```{r}
+b_all_clean %>% 
+  ggplot(aes(x=TripSpeed)) + 
+  geom_boxplot() +
+  theme(axis.text.y=element_blank(),axis.ticks.y=element_blank())
+
+```
+
+**17 records will be dropped off as part of data cleaning due to TripSpeed**
+
+```{r}
+b_all_clean %>% 
+  filter(!between(TripSpeed, 0.001, 50)) %>% nrow()
+```
+
+```{r}
+#Drop 17 records due to TripSpeed outliers
+b_all_clean <- b_all_clean %>%
+  filter(between(TripSpeed, 0.001, 50))
+```
+
+#### 3.8.7 Summary: Data Cleaning
+
+```{r}
+b_all_outliers <- setdiff(b_all,b_all_clean)
+
+print(glue::glue("\nNo. of records pre data cleaning (Company B): ",
+                 nrow(b_all)))
+print(glue::glue("\nNo. of records post data cleaning:            ",
+                 nrow(b_all_clean)))
+print(glue::glue("\nNo. of records removed due to data cleaning:  ",
+                 nrow(b_all_outliers)))
+percentage_recordremoved_B = (nrow(b_all_outliers)/nrow(b_all))*100
+print(glue::glue("\n % records removed due to data cleaning:       ",
+                 round(percentage_recordremoved_B,1)))
+```
+
+Range of Days: 2018-12-01 to 2019-01-31 (2 months data). b_1 and b_2 each has one month data.
+
+```{r}
+b_all_clean %>% 
+  group_by(FileId) %>% 
+  summarize(daterange= range(StartTime)) %>% 
+  mutate(type = c("Min_StartTime", "Max_StartTime")) %>% 
+  spread(type, daterange) %>% 
+  select(FileId, Min_StartTime, Max_StartTime)
+```
+
+#### 3.8.8 Post-Clean: Boxplot distribution of numerical variables
+
+```{r}
+b_all_clean %>%
+  select(where(is.numeric)) %>%
+  select(-TripID, -TripDuration) %>%
+  pivot_longer(colnames(.)) %>% 
+  ggplot(., aes(y = value)) +
+  geom_boxplot() + 
+  labs(y= "Value", title = 
+         "Boxplot Distribution of Select Variables",
+       subtitle = "Post-Clean Data; Company B"
+       ) +
+  facet_wrap(~ name, scales = "free")+
+  theme(axis.text.x=element_blank(),axis.ticks.x=element_blank())
+```
+
+## 3.9 Post-Cleaned Data Univariate Analysis: Company A & B
+
+```{r}
+  ggplot() +
+    geom_histogram(data = a_all_clean %>%
+    select(where(is.numeric)) %>%
+    #select(-EndLongitude) %>%
+    pivot_longer(colnames(.)),
+    aes(x = value),fill="red",color=muted("black"),alpha=0.8) + 
+    
+    geom_histogram(data = b_all_clean %>%
+    select(where(is.numeric)) %>%
+    select(-TripID) %>%
+    pivot_longer(colnames(.)),
+    aes(x = value),fill="blue",color=muted("black"),alpha=0.8) +
+    
+    labs(x="Value",y= "", title = 
+         "Distribution of Post-Cleaned Data: Company A & B",
+         subtitle = "Red = Company A; Blue = Company B",
+         caption ="Company A & B Together; 50K + 10K Records"
+       ) +
+    facet_wrap(~ name, scales = "free")+
+    theme(axis.text.y=element_blank(),axis.ticks.y=element_blank(),axis.text.x = element_text(size=8))
+```
+
+```{r}
+```
+
+## 4. Operational Metrics: Company A
+
+**Utility function to extract key summary statistics of operational metrics**
+
+```{r SummaryStatistics}
+#Function to calculate summary statistics
+get_summary_stat <- function(vec){ #input: vector
+  #Prints key summary statistics for a given vector, vec
+  print(glue::glue("\nMean:         ", mean(vec) %>% round(2)))
+  print(glue::glue("\nStd. DeV:     ", sd(vec) %>% round(2)))
+  print(glue::glue("\nMedian:       ", fivenum(vec)[3] %>% round(2)))
+  print(glue::glue("\nIQR (spread): ", IQR(vec) %>% round(2)))
+  print(glue::glue("\nMin:          ", fivenum(vec)[1] %>% round(2)))
+  print(glue::glue("\n25%Quartile:  ", fivenum(vec)[2] %>% round(2)))
+  print(glue::glue("\n75%Quartile:  ", fivenum(vec)[4] %>% round(2)))
+  print(glue::glue("\nMax:          ", fivenum(vec)[5] %>% round(2)))
+}
+```
+
+#### 4.1 Trips Per Day
+
+Summary Statistics of Trip Per Day
+
+```{r}
+a_ridecount_bydate = a_all_clean %>% 
+  group_by(trip_date = date(StartTime)) %>% 
+  summarize(count_rides_bydate = n_distinct(TripID))
+
+a_ridecount_bydate %>% head()
+
+a_ridecount_bydate$count_rides_bydate %>% get_summary_stat()
+```
+
+#### 4.2 Distance Per Trip
+
+```{r}
+a_avg_tripdistance_per_trip = round(a_all_clean$TripDistance %>% sum()/
+                                      nrow(a_all_clean),
+                                    2) #rounding
+
+print(glue::glue("Average Trip Distance of Company A: ", 
+                 a_avg_tripdistance_per_trip, " miles per trip"))
+```
+
+#### 4.3 Duration Per Trip
+
+```{r}
+a_avg_tripduration_per_trip = round(a_all_clean$TripDuration %>% sum()
+                                    /nrow(a_all_clean),
+                                    2) #rounding
+
+print(glue::glue("Average Trip Duration of Company A: ", 
+                 a_avg_tripduration_per_trip, " minutes per trip"))
+```
+
+Average duration By date
+
+```{r}
+a_avgduration_perdate <-  a_all_clean %>% 
+     group_by(trip_date = date(StartTime)) %>% 
+     summarize(avgduration_perdate = sum(TripDuration)/n())
+```
+
+#### 4.4 Trip Speed
+
+```{r}
+print(glue::glue("Average Trip Speed of Company A: ", 
+                 round(mean(a_all_clean$TripSpeed),1), " miles per hour"))
+
+```
+
+#### 4.5 Scooters Per Day
+
+```{r}
+a_scootercount_mean_bydayofweek <-  a_all_clean %>% 
+  group_by(day_of_week = wday(StartTime,label = TRUE), FileId) %>% 
+  summarize(count_scooter_bydayofweek = n_distinct(ScooterID)) %>%
+  group_by(day_of_week) %>%                        # Specify group indicator
+     summarise_at(vars(count_scooter_bydayofweek),          # Specify column
+                  list(a_mean_scootercounts = mean)) %>% # Specify function
+  mutate(a_mean_scootercounts = round(a_mean_scootercounts, 0))
+
+p_1 <- a_scootercount_mean_bydayofweek %>%
+  ggplot(aes(x=factor(day_of_week), y=a_mean_scootercounts)) +
+  geom_col(aes(fill=factor(day_of_week)),alpha=0.9, color=muted("blue")) +
+  labs(x= "Day of Week",y = "Average scooter counts", 
+       title = "Average Scooter Counts Split by Day of Week",
+       subtitle = "Company A; 5 months data") +
+  scale_fill_discrete(name = "Day of Week")
+p_1
+```
+
+#### 4.6 Trips Per Scooter
+
+```{r}
+#Group by scooterid and add temp id.
+NoUniqueScooter <- a_all$ScooterID %>% n_distinct()
+a_all_scoot <- a_all %>% 
+  group_by(ScooterID) %>% 
+  count(sort = TRUE) %>% 
+  add_column(TmpScooterId = 1:NoUniqueScooter)
+
+# No. of rides per scotterId distribution
+ggplot(data=a_all_scoot, aes(x=n)) + 
+  geom_histogram( 
+                 bins=25, fill=muted("blue"), 
+                 color = muted("red"), alpha=0.5) +
+  labs(x = "Trips Per Scooter", 
+       y = "Frequency", 
+       title = "Histogram: Trips Per Scooter",
+       subtitle = "Company A; 5 month data; ~50K rides")
+  
+ 
+ggplot(data=a_all_scoot, aes(x=n)) + 
+  geom_boxplot() +
+  labs(x = "Trips Per Scooter", 
+       y = "", 
+       title = "Boxplot: Trips Per Scooter",
+       subtitle = "Company A; 5 month data; ~50K rides")+
+  theme(axis.text.y=element_blank(),axis.ticks.y=element_blank())
+```
+
+#### 4.7 Revenue Per Day
+
+Assumption: \$1 unlock fee and \$0.15 per minute rate
+
+Revenue per trip = Average Trip Counts/day (\$1+(Average Duration/Trip \*(\$0.15/min)))
+
+For Company A: Calculated
+
+```{r}
+a_avg_tripcounts_per_day = 353 #Calculated Earlier
+a_revenue_per_day = a_avg_tripcounts_per_day*
+  (1+(a_avg_tripduration_per_trip*0.15))
+
+print(glue::glue("Average Revenue Per Day of Company B: $", 
+                 round(a_revenue_per_day,0), "/day"))
+```
+
+Average Revenue By Date
+
+```{r}
+a_avgrevenue_perdate <- a_ridecount_bydate$count_rides_bydate * 
+  (1+a_avgduration_perdate$avgduration_perdate*0.15)
+
+a_avgrevenue_perdate %>% get_summary_stat()
+
+```
+
+#### 4.7 Scooter Operational Lifespan
+
+```{r}
+ a_all_clean %>% 
+  group_by(ScooterID, date(StartTime)) %>% 
+  summarize(count = n()) %>% 
+  group_by(ScooterID) %>% 
+  summarize(Scooter_Lifespan=n()) %>%
+  ggplot(aes(x=Scooter_Lifespan)) +
+  geom_boxplot() +
+  theme(axis.text.y=element_blank(),axis.ticks.y=element_blank())
+```
+
+## 5. Operational Metrics: Company B
+
+#### 5.1 Trips Per Day
+
+```{r}
+b_ridecount_bydate = b_all_clean %>% 
+  group_by(trip_date = date(StartTime)) %>% 
+  summarize(count_rides_bydate = n_distinct(TripID))
+
+b_ridecount_bydate %>% head()
+
+#print("Summary Statistics of Trip Per Day: ")
+
+b_ridecount_bydate$count_rides_bydate %>% get_summary_stat()
+```
+
+#### 5.2 Distance Per Trip
+
+```{r}
+b_avg_tripdistance_per_trip = round(b_all_clean$TripDistance %>% sum()
+                                    /nrow(b_all_clean),
+                                    2) #rounding
+
+print(glue::glue("Average Trip Distance of Company B: ", 
+                 b_avg_tripdistance_per_trip, " miles per trip"))
+```
+
+#### 5.3 Duration Per Trip
+
+```{r}
+b_avg_tripduration_per_trip = round(b_all_clean$TripDuration %>% sum()
+                                    /nrow(b_all_clean),
+                                    2) #rounding
+
+print(glue::glue("Average Trip Duration of Company B: ", 
+                 b_avg_tripduration_per_trip, " minutes per trip"))
+```
+
+```{r}
+b_avgduration_perdate <-  b_all_clean %>% 
+     group_by(trip_date = date(StartTime)) %>% 
+     summarize(avgduration_perdate = sum(TripDuration)/n())
+```
+
+#### 5.4 Trip Speed
+
+```{r}
+
+print(glue::glue("Average Trip Speed of Company B: ", 
+                 round(mean(b_all_clean$TripSpeed),1), " miles per hour"))
+
+```
+
+#### 5.5 Revenue Per Day
+
+Assumption: \$1 unlock fee and \$0.15 per minute rate
+
+Revenue per trip = Average Trip Counts/day (\$1+(Average Duration/Trip \*(\$0.15/min)))
+
+For Company B: Calculated
+
+```{r}
+b_avg_tripcounts_per_day = 165 #Calculated Earlier
+b_revenue_per_day = b_avg_tripcounts_per_day*
+  (1+(b_avg_tripduration_per_trip*0.15))
+
+print(glue::glue("Average Revenue Per Day of Company B: $", 
+                 round(b_revenue_per_day,0), "/day"))
+```
+
+Average Revenue By Date
+
+```{r}
+b_avgrevenue_perdate <- b_ridecount_bydate$count_rides_bydate * 
+  (1+b_avgduration_perdate$avgduration_perdate*0.15)
+
+b_avgrevenue_perdate %>% get_summary_stat()
+```
+
+### 5a) Trip Count By Date: Company A & B
+
+```{r}
+
+  ggplot() +
+  geom_point(data = a_all_clean %>% 
+                    group_by(a_date= date(StartTime)) %>% 
+                    summarize(a_tripcount_bydate = n_distinct(TripID)),
+             aes(x=a_date,y=a_tripcount_bydate), color="red") +
+    
+  geom_line(data = a_all_clean %>% 
+                    group_by(a_date= date(StartTime)) %>% 
+                    summarize(a_tripcount_bydate = n_distinct(TripID)),
+             aes(x=a_date,y=a_tripcount_bydate),color="red") +
+    
+  geom_point(data = b_all_clean %>% 
+                    group_by(b_date= date(StartTime)) %>% 
+                    summarize(b_tripcount_bydate = n_distinct(TripID)),
+             aes(x=b_date,y=b_tripcount_bydate),color="blue") +
+    
+  geom_line(data = b_all_clean %>% 
+                    group_by(b_date= date(StartTime)) %>% 
+                    summarize(b_tripcount_bydate = n_distinct(TripID)),
+             aes(x=b_date,y=b_tripcount_bydate),color="blue") +
+    
+  labs(x="Date",y="Trip Counts",title="Trip Counts By Date",
+       subtitle = "Red = Company A; Blue = Company B", caption = "Company A & B Together") +
+    scale_x_date(date_breaks = "months" , date_labels = "%m-%d")
+  
+  
+```
+
+### 5b) Trip Count & Scooter Count by Date: Company
+
+```{r}
+#Scooters by Date: Company A
+a_unique_scooters_bydate = a_all_clean %>% 
+  group_by(trip_date=date(StartTime)) %>% 
+  summarize(count_unique_scooters = n_distinct(ScooterID))
+
+ggplot() +
+  geom_line(data = a_all_clean %>% 
+                    group_by(a_date= date(StartTime)) %>% 
+                    summarize(a_tripcount_bydate = n_distinct(TripID)),
+             aes(x=a_date,y=a_tripcount_bydate),color="red") +
+  
+  geom_line(data = a_unique_scooters_bydate, 
+            aes(x=trip_date, y=count_unique_scooters)) +
+    
+  labs(x="Date",y="Counts",
+       title="Trips & Scooters Counts By Date: Company A", 
+       subtitle = "Red Line = Trip Counts ; Black Line = Scooter Counts", caption = "~50K; 5 months") +
+    scale_x_date(date_breaks = "months" , date_labels = "%m-%d")
+```
+
+## 6. Trip Count By Day of the Week: Company A & B
+
+Week= Sunday to Saturday
+
+#### **6.1 Total Trip Counts by Day of the Week: Company A**
+
+```{r}
+#Get no.of each day in the given 5 month period
+
+a_no_of_days <- a_ridecount_bydate %>% 
+  group_by(day_of_week = wday(trip_date, label = TRUE)) %>% 
+  summarize(no_of_days_in5months=n())
+
+#Split by day of week
+a_ridecount_bydayofweek <- a_all_clean %>% 
+  group_by(day_of_week = wday(StartTime, label = TRUE)) %>% 
+  summarize(count_rides_byday_ofweek = n_distinct(TripID))
+
+a_ridecount_bydayofweek <- 
+  a_ridecount_bydayofweek %>% 
+  
+  #Percentage ride = total ride count by day/total ride count
+  mutate(percentage_rides_byday_ofweek = 
+           round(count_rides_byday_ofweek/
+                   sum(count_rides_byday_ofweek)*100,1)) %>% 
+  left_join(a_no_of_days,by ="day_of_week") %>% 
+  
+  #average ride count = total ride count by day/no.of days (ie. no. of saturday etc)
+  mutate(avg_rides_byday_ofweek = 
+           round(count_rides_byday_ofweek/no_of_days_in5months,0)) 
+
+
+p_2 <- a_ridecount_bydayofweek %>%
+  ggplot(aes(x=factor(day_of_week), y=count_rides_byday_ofweek)) +
+  geom_col(fill="red",alpha=0.8) +
+  labs(x= "Day of Week",y = "Total Ride Counts", 
+       title = "Total ride counts split by Day of Week",
+       subtitle = "Company A; 5 months data",
+       caption = "Sunday to Saturday")
+p_2
+```
+
+```{r}
+
+```
+
+#### **6.2 Total Trip Counts by Day of the Week: Company B**
+
+```{r}
+#Get no.of each day in the given 2 month period
+
+b_no_of_days <- b_ridecount_bydate %>% 
+  group_by(day_of_week = wday(trip_date, label = TRUE)) %>% 
+  summarize(no_of_days_in2months=n())
+
+#Split by day of week
+b_ridecount_bydayofweek <- b_all_clean %>% 
+  group_by(day_of_week = wday(StartTime, label = TRUE)) %>% 
+  summarize(count_rides_byday_ofweek = n_distinct(TripID))
+
+b_ridecount_bydayofweek <- 
+  b_ridecount_bydayofweek %>% 
+  
+  #Percentage ride = total ride count by day/total ride count
+  mutate(percentage_rides_byday_ofweek = 
+           round(count_rides_byday_ofweek/
+                   sum(count_rides_byday_ofweek)*100,1)) %>% 
+  left_join(b_no_of_days,by ="day_of_week") %>% 
+  
+  #average ride count = total ride count by day/no.of days (ie. no. of saturday etc)
+  mutate(avg_rides_byday_ofweek = 
+           round(count_rides_byday_ofweek/no_of_days_in2months,0))
+
+b_ridecount_bydayofweek %>%
+  ggplot(aes(x=factor(day_of_week), y=count_rides_byday_ofweek)) +
+  geom_col(fill="blue",alpha=0.8) +
+  labs(x= "Day of Week",y = "Total Ride Counts", 
+       title = "Total ride counts split by Day of Week",
+       subtitle = "Company B; 2 months data",
+       caption = "Sunday to Saturday")
+```
+
+#### **6.3 Average trip counts by day of the week: Company A & B Together**
+
+```{r}
+#Test
+
+#rename variable names with prefix a and b
+a_ridecount_bydayofweek <- a_ridecount_bydayofweek %>% 
+  rename_with(~ str_c("a_",.x), contains("byday_ofweek"))
+
+
+b_ridecount_bydayofweek <- b_ridecount_bydayofweek %>% 
+  rename_with(~ str_c("b_",.x), contains("byday_ofweek"))
+
+##Test
+a_b_ridecount_bydayofweek <- inner_join(a_ridecount_bydayofweek, 
+             b_ridecount_bydayofweek,
+             by="day_of_week")
+  
+a_b_ridecount_bydayofweek_melt <- 
+  melt(a_b_ridecount_bydayofweek %>% 
+         select(day_of_week, contains("avg")), 
+       id.vars = 'day_of_week')
+
+
+a_b_ridecount_bydayofweek_melt %>%
+  ggplot(aes(x=day_of_week, y=value, fill=variable)) +
+  geom_bar(stat='identity', position='dodge') +
+  labs(x= "Day of Week",y = "Average Trip Counts", 
+       title = "Average Trip Counts by Day of Week",
+       subtitle = "Company A (Red) & Company B (Blue)",
+       caption = "Avg. Trip Counts = Trip count by day of week/no.of days") +
+  scale_fill_discrete(name = "", labels = c("Company A", "Company B"))
+
+```
+
+```{r}
+a_b_ridecount_bydayofweek_melt2 <- 
+  melt(a_b_ridecount_bydayofweek %>% 
+         select(day_of_week, contains("percentage")), 
+       id.vars = 'day_of_week')
+
+
+a_b_ridecount_bydayofweek_melt2 %>%
+  ggplot(aes(x=day_of_week, y=value, fill=variable)) +
+  geom_bar(stat='identity', position='dodge') +
+  labs(x= "Day of Week",y = "Percent Trip Counts", 
+       title = "Percent Trip Counts by Day of Week",
+       subtitle = "Company A (Red) & Company B (Blue)",
+       caption = "% Trip Counts = Trip count by day of week/total no.of trips") +
+  scale_fill_discrete(name = "", labels = c("Company A", "Company B"))
+```
+
+##### 6.3.1 Summary Statistics
+
+```{r}
+#Company A
+#a_ridecount_mean_bydayofweek$a_mean_ridecounts %>% get_summary_stat()
+```
+
+```{r}
+#b_ridecount_mean_bydayofweek$b_mean_ridecounts %>% get_summary_stat()
+```
+
+#### 6.4 Summary
+
+-   In Company A, there is monotic increase in rides from Monday to Sunday, peaking on Saturday
+
+    -   On average, there are around 1500 trips on any given day of the week
+
+-   In Company B, there is peak trip volume in the middle of the week and on Saturday
+
+    -   On average, there are aroun 720 trips on any given day of the week (\~2X lower than Company A)
+
+## 7. Temporal Analysis- Trip Count By Hour: Company A & B
+
+#### 7.1 Heat map: Trip count split by day of week and hour of day
+
+##### 7.1.1 Company A
+
+```{r}
+#Company A
+df_a <- a_all_clean %>% 
+  mutate(Hour = hour(StartTime),
+         DayofWeek =wday(StartTime, label = TRUE)) %>%
+  arrange(DayofWeek)
+
+df_a <- table(df_a$Hour, df_a$DayofWeek) %>% data.frame() %>% 
+  rename(RideCount = Freq, Dayofweek = Var2, Hourofday = Var1)
+
+#Normalizing using Zscore, linear scaling
+#linear scaling = x-xmin/(xmax-xmin)
+df_a <- df_a %>% 
+  mutate(Zscore = 
+           round((RideCount-mean(df_a$RideCount))/sd(df_a$RideCount),2), 
+         Scalelinear = 
+           round((RideCount - min(df_a$RideCount))/
+                   (max(df_a$RideCount)-min(df_a$RideCount)),3))
+
+p <- ggplot(df_a) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = RideCount)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       title = "Heatmap: Trip Count Split by Day of Week & Hour of Day",
+       subtitle = "Company A; 5 month data; ~50K trips",
+       caption = "Hour: 24hr format")
+
+p
+#For interactive plot
+#ggplotly(p, tooltip="text")
+```
+
+Heatmap using Zscore
+
+```{r}
+ggplot(df_a) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = Zscore)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       title = "Heatmap: Trip Count (Z normalized) Split by Day of Week & Hour of Day",
+       subtitle = "Company A; 5 month data; ~50K trips",
+       caption = "Trip Count Normalized by Z score \n
+       Z score = x-avg(x)/std.dev(x)")
+```
+
+```{r}
+ggplot(df_a) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = Scalelinear)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       fill = "Linear Scaling",
+       title = "Heatmap: Trip Count (scaled) Split by Day of Week & Hour of Day",
+       subtitle = "Company A; 5 month data; ~50K trips",
+       caption = "Trip Count Normalized by Linear Scaling 
+       \nlinear scaling = x-xmin/(xmax-xmin)")
+```
+
+##### 7.1.2 Company B
+
+```{r}
+#Company B
+df_b <- b_all_clean %>% 
+  mutate(Hour = hour(StartTime),
+         DayofWeek =wday(StartTime, label = TRUE)) %>%
+  arrange(DayofWeek)
+
+df_b <- table(df_b$Hour, df_b$DayofWeek) %>% data.frame() %>% 
+  rename(RideCount = Freq, Dayofweek = Var2, Hourofday = Var1)
+
+#Normalizing using Zscore, linear scaling
+#linear scaling = x-xmin/(xmax-xmin)
+df_b <- df_b %>% 
+  mutate(Zscore = 
+           round((RideCount-mean(df_b$RideCount))/sd(df_b$RideCount),2), 
+         Scalelinear = 
+           round((RideCount - min(df_b$RideCount))/
+                   (max(df_b$RideCount)-min(df_b$RideCount)),3))
+
+
+q <- ggplot(df_b) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = RideCount)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       title = "Heatmap: Trip Count Split by Day of Week & Hour of Day",
+       subtitle = "Company B; 2 month data; ~10K rides",
+       caption = "Hour: 24hr format")
+q
+
+```
+
+```{r}
+ggplot(df_b) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = Zscore)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       title = "Heatmap: Trip Count (Z normalized) Split by Day of Week & Hour of Day",
+       subtitle = "Company B; 2 month data; ~10K trips",
+       caption = "Trip Count Normalized by Z score \n
+       Z score = x-avg(x)/std.dev(x)")
+```
+
+```{r}
+ggplot(df_b) + 
+  geom_tile(aes(Dayofweek, Hourofday, fill = Scalelinear)) + 
+  scale_fill_gradient(low = "white", high = "red") +
+  theme(axis.text.y = element_text(size = 9)) +
+  labs(x = "Day of Week", 
+       y = "Hour of Day", 
+       fill = "Linear Scaling",
+       title = "Heatmap: Trip Count (scaled) Split by Day of Week & Hour of Day",
+       subtitle = "Company B; 2 month data; ~10K trips",
+       caption = "Trip Count Normalized by Linear Scaling 
+       \nlinear scaling = x-xmin/(xmax-xmin)")
+```
+
+#### 7.2 Summary
+
+-   Riders of both Company A & B seems to be casual/recreational riders. Peak demand happens over the weekend and midday. The bimodal peak, a signature of commuters riders is not present
+
+## 8. Estimate Scooter Count : Company B
+
+Procedure details
+
+[**Logic**]{.ul}
+
+**At a minimum, there should be as many number of scooters as there are overlapping trip.**
+
+-   Because a scooter during a trip, can not be rented for another trip. Hence overlapping trips is a proxy for estimating the minimum number of scooters
+
+[**Overlap Criteria**]{.ul}
+
+**For two trips, trip1 and trip2, to overlap, the following condition should satisfy:**
+
+-   **StartTime (of Trip1) \< EndTime (Trip2) & EndTime(Trip1) > StartTime(Trip2)**
+
+[Execution Steps]{.ul}
+
+**Step 1:** Calculate the maximum number of overlapping trips (using the above criteria) within a day. Repeat it for all days and look for the maximum in each case.
+
+-   Let's call it "max_overlaptrips_for_each_day"
+
+**Step 2:** Get the overall maximum value from all of the calculated "max_overlaptrips_for_each_day"
+
+Result from Step 2, gives the estimated minimum of scooters
+
+**Limitations/Assumptions in this Strategy:**
+
+-   **Assumption:** Scooter inventory is assumed to be constant for the entire time period.
+
+    -   Company A files indicates a dynamic inventory. We won't be able to capture that for Company B without the ScooterId
+
+-   **Limitation:** This strategy would underestimate the true maximum of scooters because:
+
+    -   it doesn't take into account start and end locations
+
+    -   if they never actually rented out the full capacity (outside the scope of the data)
+
+    **Strategies to Improve Estimation Accuracy:**
+
+    -   Including location data (origin & destination) might improve the accuracy
+
+#### 8.1 Function to execute the criteria
+
+```{r}
+# Use cross product and pairwise to execute the criteria
+
+get_max_overlapping_tripcounts <- function(StartTime, EndTime){
+  
+# Function returns the maximum overlapping trips for a given StartTime & EndTime
+# Returns one value per date
+
+# Pairwise comparison of overlapping time
+  condition_1 <- #StartTime (of Trip1) < EndTime (Trip2)
+   as.matrix(outer(StartTime, EndTime, "<"))
+  condition_2 <- #EndTime(Trip1) > StartTime(Trip2)
+  as.matrix(outer(EndTime, StartTime, ">"))
+
+#Setting lower triangle to zero to get columnwise sum
+  condition_1[lower.tri(condition_1, diag=FALSE)] <- 0 
+  condition_2[lower.tri(condition_2, diag=FALSE)] <- 0
+  
+# Do columnwise sum
+  tmp1 <- colSums(condition_1 & condition_2)
+
+# Get max from that
+  return(max(tmp1))
+
+  }
+```
+
+#### 8.2 Execute function to loop for each day (step 1)
+
+```{r}
+# Company B (Post-Clean)
+
+b_scooter_count <- b_all_clean %>% 
+  arrange(StartTime) %>% 
+  group_by(trip_date=date(StartTime)) %>% 
+  summarize(daily_scooter_count = 
+              get_max_overlapping_tripcounts(StartTime, EndTime))
+```
+
+#### 8.3 Estimated scooter counts: Distribution
+
+```{r}
+q_2 <- b_scooter_count %>% 
+  ggplot() +
+  geom_histogram(aes(x=daily_scooter_count), 
+                 bins=25, fill=muted("blue"), 
+                 color = muted("red"), alpha=0.5) +
+  labs(x = "Estimated Scooter Count (Per Day)", 
+       y = "Frequency", 
+       title = "Histogram: Estimated Scooter Count",
+       subtitle = "Company B; 2 month data; ~10K rides",
+       caption = "Estimated using overlapping trip criteria")
+
+q_2
+```
+
+```{r}
+b_scooter_count %>% 
+  mutate(month_day = format(as.Date(trip_date), "%m-%d")) %>% #Extract month-day
+  ggplot() +
+  geom_col(aes(x=month_day,y=daily_scooter_count), 
+                 bins=25, fill=muted("blue"), 
+                 color = muted("red"), alpha=0.5) +
+  labs(x = "Estimated Scooter Count", 
+       y = "Frequency", 
+       title = "Histogram: Estimated Scooter Count",
+       subtitle = "Company B; 2 month data; ~10K rides",
+       caption = "Estimated using overlapping trip criteria")+
+  theme(axis.text.x = element_text(angle=90, vjust=0.5, size=6))
+```
+
+#### **8.4 Estimate minimum scooter count (step 2)**
+
+Get the overall maximum value from all of the calculated scooter counts calculated using the overlapping trip criteria
+
+```{r}
+estimate_min_scooter_count_companyb <- 
+  b_scooter_count$daily_scooter_count %>% max()
+print(glue::glue("Estimated Minimum Number of Scooters of Company B: ", 
+                 estimate_min_scooter_count_companyb))
+```
+
+#### 8.5 Testing the methodology on Company A data
+
+##### 8.5.1 Estimated scooter counts (Company A):
+
+```{r}
+# Company A
+a_scooter_count <- a_all_clean %>% 
+  group_by(trip_date=date(StartTime)) %>% 
+  summarize(daily_scooter_count = 
+              get_max_overlapping_tripcounts(StartTime, EndTime))
+
+estimate_min_scooter_count_companya <- 
+  a_scooter_count$daily_scooter_count %>% max()
+print(glue::glue("Estimated Minimum Number of Scooters of Company A: ", 
+                 estimate_min_scooter_count_companya))
+```
+
+##### 8.5.2 Distribution
+
+```{r}
+a_scooter_count %>% 
+  ggplot() +
+  geom_histogram(aes(x=daily_scooter_count), 
+                 bins=25, fill=muted("green"), 
+                 color = muted("red"), alpha=0.5) +
+  labs(x = "Estimated Scooter Count (Per Day)", 
+       y = "Frequency", 
+       title = "Histogram: Estimated Scooter Count",
+       subtitle = "Company A; 5 month data; ~50K rides",
+       caption = "Estimated using overlapping trip criteria")
+```
+
+##### 8.5.3 Actual vs Estimated
+
+```{r}
+a_unique_scooters_bydate = a_all_clean %>% 
+  group_by(trip_date=date(StartTime)) %>% 
+  summarize(count_unique_scooters = n_distinct(ScooterID))
+
+a_scooter_count_predicted_vs_actual <- 
+  inner_join(a_unique_scooters_bydate, 
+             a_scooter_count, 
+             by = "trip_date")
+```
+
+```{r}
+p_5 <- a_scooter_count_predicted_vs_actual %>% 
+  mutate(dayid=c(1:nrow(a_scooter_count_predicted_vs_actual))) %>% 
+  ggplot(data =.) + 
+  geom_line(aes(x=dayid, y=daily_scooter_count), 
+            color = "green", alpha = 0.7) +
+  geom_line(aes(x=dayid, y=count_unique_scooters), 
+            color = "blue", alpha = 0.5) +
+  geom_point(aes(x=dayid, y=daily_scooter_count), 
+            color = "green", alpha = 0.7) +
+  geom_point(aes(x=dayid, y=count_unique_scooters), 
+            color = "blue", alpha = 0.5) +
+  labs(x = "Day ID (5 months or 150 days)", 
+       y = "Scooter Count", 
+       title = "Comparison: Actual vs Estimated Scooter Count",
+       subtitle = "Company A; 5 months \n Actual (Blue); Estimated* (Green)",
+       caption = "*Estimated using overlapping trip criteria")
+  
+p_5
+```
+
+#### 8.6 Summary
+
+-   **Estimated Minimum Number of Scooters of Company B: 30**
+
+    -   Using the overlapping trip criteria (See above for logic and procedure)
+
+-   As explained earlier, this will be an underestimate from the true scooter count
+
+-   As a proof, tested the procedure in Company A data and as expected, the estimated scooter count is much less than the actual scooter count. But it's consistent across the 150 days, showing the robustness of the procedure
+
+## 8.7 Spatial Analysis: Company A & B
+
+#### 8.7.1 Origin-Destination Overlap: A & B Together
+
+```{r}
+a_b_lat_long <- a_all_clean %>% 
+  select(
+         FileId,
+         StartLatitude,
+         StartLongitude,
+         EndLatitude, 
+         EndLongitude) %>% 
+  mutate(CompanyID = "Company A")
+
+a_b_lat_long <- a_b_lat_long %>% 
+  bind_rows(b_all_clean %>% 
+              select(
+                     FileId,
+                     StartLatitude,
+                     StartLongitude,
+                     EndLatitude, 
+                     EndLongitude) %>%
+  mutate(CompanyID = "Company B"))
+            
+
+a_b_lat_long %>% ggplot() + 
+  geom_jitter(aes(y=StartLatitude, x=StartLongitude,color=CompanyID), 
+              size=2, alpha=0.95, shape = 0)+
+  geom_jitter(aes(y=EndLatitude, x=EndLongitude,color=CompanyID), 
+              size=2, shape = 4)+
+  labs(title ="Latitude Vs Longitude for Origin & Destination 
+  \n Red = Company A; Blue = Company B", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Open Square = Origin; Cross = Destination") +
+  guides(color = "none")
+  
+
+```
+
+#### 8.7.2 Origin-Destination Overlap: A Only
+
+```{r}
+a_all_clean %>% ggplot() + 
+  geom_jitter(aes(y=StartLatitude, x=StartLongitude), 
+              size=2, alpha = 0.95,color=muted("red"), shape = 0)+
+  geom_jitter(aes(y=EndLatitude, x=EndLongitude), 
+              size=2, alpha = 0.8, color=muted("red"), shape = 4)+
+  labs(title ="Latitude Vs Longitude for Origin & Destination", 
+       y="Latitude", x="Longitude", subtitle = "Company A; ~50K trips over 5 months
+       \n Open Square = Origin; Cross = Destination")
+```
+
+#### 8.7.3 Origin-Destination Overlap: B Only
+
+```{r}
+b_all_clean %>% ggplot() + 
+  geom_jitter(aes(y=StartLatitude, x=StartLongitude), 
+              size=2, alpha=0.95, shape = 0, color=muted("blue"))+
+  geom_jitter(aes(y=EndLatitude, x=EndLongitude),
+              size=2, alpha=0.8, shape = 4, color=muted("blue"))+
+  labs(title ="Latitude Vs Longitude for Origin & Destination", 
+       y="Latitude", x="Longitude", subtitle = "Company B; ~10K trips over 2 months
+       \n Open Square = Origin; Cross = Destination")
+```
+
+#### 8.7.4 Geo-spatial Analysis: Overlay Origin-Destination Data with Kentucky Area Map
+
+Spatial Map of Kentucky counties/city close to the operation zone (Louisville area) of Company A and B is plotted here. If time permits, can add overlay maps of Company A & B's origin-destination positions to get density map. This could tell us where the hotspots and possibly the stations for both the companies.
+
+```{r}
+ky_counties <- map_data("county", "kentucky") %>% 
+  select(lon = long, lat, group, id = subregion)
+
+df_map <- ky_counties %>% 
+  rename(Longitude = lon, Latitude = lat, CountyName =id) %>% 
+  filter(between(Latitude,37.85,38.65) & between(Longitude,-85.90,-85.49 ))
+
+ggplot(df_map, aes(Longitude, Latitude, group = group)) +
+  geom_polygon(fill = "white", colour = "grey50") + 
+  coord_quickmap()
+
+```
+
+Louisville Map (with default values from Open maps)
+
+```{r}
+map_real <- get_stamenmap(
+  bbox = c(left = -85.7812, 
+           bottom = 38.2345, 
+           right = -85.6876, 
+           top = 38.2787),
+  maptype = "terrain",
+  zoom = 15
+)
+ggmap(map_real)+coord_quickmap()
+```
+
+```{r}
+map_ourdata_zoomout <- get_stamenmap(
+  bbox = c(left = -85.9, 
+           bottom = 38.09, 
+           right = -85.49, 
+           top = 38.34),
+  maptype = "terrain",
+  zoom = 2
+)
+
+ggmap(map_ourdata_zoomout)+coord_quickmap()
+```
+
+Louisville map (with our data boundaries)
+
+```{r}
+map_ourdata <- get_stamenmap(
+  bbox = c(left = -85.9, 
+           bottom = 38.09, 
+           right = -85.49, 
+           top = 38.34),
+  maptype = "terrain",
+  zoom = 13
+)
+
+ggmap(map_ourdata)+coord_quickmap()
+```
+
+```{r}
+b_dec <-b_all_clean %>% filter(FileId == "b_1") %>% select(StartLatitude, StartLongitude, EndLatitude, EndLongitude) %>% .[1:10,]
+
+a_b_lat_long %>% ggplot() + 
+  geom_jitter(aes(y=StartLatitude, x=StartLongitude,color=CompanyID), 
+              size=2, alpha=0.95, shape = 0)+
+  geom_jitter(aes(y=EndLatitude, x=EndLongitude,color=CompanyID), 
+              size=2, shape = 4)+
+  labs(title ="Latitude Vs Longitude for Origin & Destination 
+  \n Red = Company A; Blue = Company B", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Open Square = Origin; Cross = Destination") +
+  guides(color = "none")
+
+
+#ggmap(map_ourdata) +
+ggmap(map_ourdata) +
+  geom_point(data = a_b_lat_long, 
+             aes(y=StartLatitude, x=StartLongitude,color=CompanyID), 
+              size=2, alpha=0.95, shape = 0)+
+  geom_point(data = a_b_lat_long,aes(y=EndLatitude, x=EndLongitude,color=CompanyID), 
+              size=2, shape = 4)+
+  labs(title ="Latitude Vs Longitude for Origin & Destination 
+  \n Red = Company A; Blue = Company B", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Open Square = Origin; Cross = Destination") +
+  guides(color = "none")
+
+```
+
+```{r}
+#ggmap(map_ourdata) +
+ggmap(map_ourdata) +
+  geom_path(data = a_b_lat_long, 
+             aes(y=StartLatitude, x=StartLongitude,color=CompanyID), 
+              size=1, alpha=0.9)+
+  geom_path(data = a_b_lat_long,aes(y=EndLatitude, x=EndLongitude,color=CompanyID), 
+              size=1)+
+  labs(title ="Latitude Vs Longitude for Origin & Destination 
+  \n Red = Company A; Blue = Company B", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Open Square = Origin; Cross = Destination") +
+  guides(color = "none")
+```
+
+Origin Only; Company A; Dec'18 data
+
+```{r}
+ggmap(map_ourdata) +
+  geom_point(data = a_all_clean %>% 
+               filter(FileId=="a_5") %>% 
+             select(StartLatitude, StartLongitude) %>% 
+               group_by(StartLatitude, StartLongitude) %>% 
+               summarize(O_frequency= n()), 
+             aes(y=StartLatitude, x=StartLongitude, size=O_frequency), 
+             alpha=0.5)+
+  labs(title ="Origin : Latitude Vs Longitude", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Company A | Dec'18 data | Origin", size = "Frequency")
+```
+
+Origin Only; Company B; Dec'18 data
+
+```{r}
+ggmap(map_ourdata) +
+  geom_point(data = b_all_clean %>% 
+               filter(FileId=="b_1") %>% 
+             select(StartLatitude, StartLongitude) %>% 
+               group_by(StartLatitude, StartLongitude) %>% 
+               summarize(O_frequency= n()), 
+             aes(y=StartLatitude, x=StartLongitude, size=O_frequency), 
+             alpha=0.5)+
+  labs(title ="Origin : Latitude Vs Longitude", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Company B | Dec'18 data | Origin", size = "Frequency")
+
+
+```
+
+Origin-Destination ; Company B;
+
+```{r}
+ggmap(map_ourdata) +
+  geom_point(data = b_all_clean %>% 
+               select(StartLatitude, StartLongitude) %>% 
+               group_by(StartLatitude, StartLongitude) %>% 
+               summarize(O_frequency= n()), 
+             aes(y=StartLatitude, x=StartLongitude, size=O_frequency), 
+             alpha=0.5, shape = 0, color = "blue") +
+  geom_point(data = b_all_clean %>% 
+               select(EndLatitude, EndLongitude) %>% 
+               group_by(EndLatitude, EndLongitude) %>% 
+               summarize(d_frequency= n()), 
+             aes(y=EndLatitude, x=EndLongitude, size=d_frequency), 
+             alpha=0.5, shape = 4, color = "blue") +
+  labs(title ="Origin & Destination : Latitude Vs Longitude", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Company B | 2 months | Open Square: Origin, Cross: Destination", 
+       size = "Frequency")
+```
+
+Origin-Destination ; Company A;
+
+```{r}
+ggmap(map_ourdata) +
+  geom_point(data = a_all_clean %>% 
+               select(StartLatitude, StartLongitude) %>% 
+               group_by(StartLatitude, StartLongitude) %>% 
+               summarize(O_frequency= n()), 
+             aes(y=StartLatitude, x=StartLongitude, size=O_frequency), 
+             alpha=0.5, shape = 0, color = "red") +
+  geom_point(data = a_all_clean %>% 
+               select(EndLatitude, EndLongitude) %>% 
+               group_by(EndLatitude, EndLongitude) %>% 
+               summarize(d_frequency= n()), 
+             aes(y=EndLatitude, x=EndLongitude, size=d_frequency), 
+             alpha=0.5, shape = 4, color = "red") +
+ labs(title ="Origin & Destination : Latitude Vs Longitude", 
+       y="Latitude", x="Longitude", 
+       subtitle = "Company A | 5 months | Open Square: Origin, Cross: Destination", 
+       size = "Frequency")
+```
+
+#### 8.7 Summary
+
+-   Company A's operating area is a bit larger than Company B
+
+-   For both companies, majority of the trips starts and ends in the same location (round trips). Possibly to and from to river side?
+
+-   If time permits, it would be pretty cool to overlay the origin-destination pairs of both companies onto Louisville area map to identify the hotspots etc.,
