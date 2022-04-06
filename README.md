@@ -10,3 +10,7 @@ Analysis Description: Performed data cleaning via univariate analysis, metric an
 ○ 12-6 PM on Weekends is when the rental demand peaks for both companies
 ○ Casual/recreational is the rider persona
 ○ 30 to 120 is the estimated scooter count based on overlapping trip logic
+
+Programming Language: R (tidyverse package ecosystem)
+Report: R markdown (hyperlinked with table of contents)
+Decks: A PDF report with key summary is presented here as well
